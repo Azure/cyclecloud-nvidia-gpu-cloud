@@ -1,0 +1,288 @@
+#############################################
+## Nvidia-Gpu-Cloud with SGE Template    ##
+#############################################
+
+[cluster sge-nvidia-gpu-cloud]
+FormLayout = selectionpanel
+IconUrl = https://github.com/azure/cyclecloud-nvidia-gpu-cloud/raw/master/icon.png
+Category = Applications
+
+Autoscale = $Autoscale
+
+
+    [[node defaults]]
+    Credentials = $Credentials    
+    SubnetId = $SubnetId
+    Region = $Region
+    KeyPairLocation = ~/.ssh/cyclecloud.pem
+
+    InstallJetpack = true
+    JetpackPlatform = ubuntu-16.04
+    AwaitInstallation = true
+
+    Azure.Publisher = nvidia
+    Azure.Offer = ngc_azure_17_11
+    Azure.ImageVersion = latest
+    Azure.Sku = nvidia_gpu_cloud_18_06
+    Azure.OS = linux
+
+
+    AdditionalClusterInitSpecs = $DefaultClusterInitSpecs
+
+        [[[configuration]]]
+        # NVidia GPU Cloud images require meta-data access for users
+        cyclecloud.node.prevent_metadata_access = false
+
+        [[[configuration nvidia]]]
+        api_key = $configuration_nvidia_api_key
+        images = $configuration_nvidia_preload_images
+        
+
+        [[[cluster-init nvidia-gpu-cloud:default:1.0.0]]]
+
+    [[node master]]
+    MachineType = $MasterMachineType
+    IsReturnProxy = $ReturnProxy
+    AdditionalClusterInitSpecs = $MasterClusterInitSpecs
+
+        [[[configuration]]]
+        run_list=role[sge_master_role]
+
+        [[[cluster-init nvidia-gpu-cloud:master:1.0.0]]]
+        
+        [[[network-interface eth0]]]
+        AssociatePublicIpAddress = $UsePublicNetwork
+
+        [[[input-endpoint ganglia]]]
+        PrivatePort = 8652
+        PublicPort = 8652        
+
+    [[nodearray execute]]
+    MachineType = $ExecuteMachineType
+    MaxCoreCount = $MaxExecuteCoreCount
+
+    Interruptible = $UseLowPrio
+    AdditionalClusterInitSpecs = $ExecuteClusterInitSpecs
+
+        [[[configuration]]]
+        run_list = role[sge_execute_role]
+
+        [[[cluster-init nvidia-gpu-cloud:execute:1.0.0]]]
+        
+        [[[network-interface eth0]]]
+        AssociatePublicIpAddress = false
+
+
+    
+
+[parameters About]
+Order = 1
+
+    [[parameters About Nvidia-Gpu-Cloud]]
+
+        [[[parameter DSVM]]]
+        HideLabel = true
+        Config.Plugin = pico.widget.HtmlTemplateWidget
+        Config.Template =  '''
+        <table>
+          <tr>
+            <td><img src='https://github.com/azure/cyclecloud-nvidia-gpu-cloud/raw/master/icon.png' width='192' height='143'></td>
+          </tr>
+        </table>
+        <table>
+          <tr>
+            <td><p>This cluster uses the NVidia GPU Cloud Marketplace images to provide machine learning capabilities on top of a Grid Engine cluster.</p>
+            <br>
+            <p>See the <a href="https://ngc.nvidia.com" target="_blank">NVidia GPU Cloud project site</a> for an overview.</p>
+          </tr>
+        </table>'''
+
+        [[[parameter Readme]]]
+        HideLabel = true
+        Config.Plugin = pico.widget.HtmlTemplateWidget
+        Config.Template := "Follow the instructions in the <a href=\"https://github.com/azure/cyclecloud-nvidia-gpu-cloud/\" target=\"_blank\">README</a> for details on instructions on extending and configuring the Project for your environment."
+
+
+
+[parameters Required Settings]
+Order = 10
+
+    [[parameters Virtual Machines]]
+    Description = "The cluster, in this case, has two roles: the scheduler master-node with shared filer and the execute hosts. Configure which VM types to use based on the requirements of your application."
+    Order = 20
+
+
+        [[[parameter Region]]]
+        Label = Region
+        Description = Deployment Location
+        ParameterType = Cloud.Region
+        DefaultValue = westus2
+
+        [[[parameter MasterMachineType]]]
+        Label = Master VM Type
+        Description = The VM type for scheduler master and shared filer.
+        ParameterType = Cloud.MachineType
+        DefaultValue = Standard_NC6s_v2
+        Config.Filter := ComputeType === "GPU"
+
+        [[[parameter ExecuteMachineType]]]
+        Label = Execute VM Type
+        Description = The VM type for execute nodes
+        ParameterType = Cloud.MachineType
+        DefaultValue = Standard_NC6s_v2
+        Config.Multiselect = true
+        Config.Filter := ComputeType === "GPU"
+
+    [[parameters Networking]]
+    Order = 40
+
+        [[[parameter SubnetId]]]
+        Label = Subnet ID
+        Description = Subnet Resource Path (ResourceGroup/VirtualNetwork/Subnet)
+        ParameterType = Azure.Subnet
+        Required = True
+
+
+    [[parameters NVidia GPU CLoud Settings ]]
+    Description = "Section for configuring NVidia GPU Cloud"
+    Order = 50
+
+        [[[parameter configuration_nvidia_api_key]]]
+        required = True
+        label = GPU Cloud API Key
+        description = NVidia GPU Cloud API Key to use to access container registry
+
+
+        [[[parameter configuration_nvidia_preload_images]]]
+        required = False
+        label = Container Images:
+        description = Preload a list of NVidia GPU Cloud images
+        Config.Plugin = pico.form.ListBuilder
+        Config.ItemWidget.Plugin = pico.form.Dropdown
+
+                [[[[list Config.ItemWidget.Entries]]]]
+                Value = nvcr.io/nvidia/caffe:18.08-py2centos-7
+                Label = caffe:18.08-py2centos-7
+
+                [[[[list Config.ItemWidget.Entries]]]]
+                Value = nvcr.io/nvidia/caffe2:18.08-py3
+                Label = caffe2:18.08-py3
+
+                [[[[list Config.ItemWidget.Entries]]]]
+                Value = nvcr.io/nvidia/cntk:18.08-py3
+                Label = cntk:18.08-py3
+                
+                [[[[list Config.ItemWidget.Entries]]]]
+                Value = nvcr.io/nvidia/cuda:9.0-cudnn7.2-devel-ubuntu16.04
+                Label = cuda:9.0-cudnn7.2-devel-ubuntu16.04
+                
+                [[[[list Config.ItemWidget.Entries]]]]
+                Value = nvcr.io/nvidia/digits:18.08
+                Label = digits:18.08
+                
+                [[[[list Config.ItemWidget.Entries]]]]
+                Value = nvcr.io/nvidia/inferenceserver:18.08.1-py2
+                Label = inferenceserver:18.08.1-py2
+                
+                [[[[list Config.ItemWidget.Entries]]]]
+                Value = nvcr.io/nvidia/mxnet:18.08-py3
+                Label = mxnet:18.08-py3
+                
+                [[[[list Config.ItemWidget.Entries]]]]
+                Value = nvcr.io/nvidia/pytorch:18.08-py3
+                Label = pytorch:18.08-py3
+                
+                [[[[list Config.ItemWidget.Entries]]]]
+                Value = nvcr.io/nvidia/tensorflow:18.08-py3
+                Label = tensorflow:18.08-py3
+                
+                [[[[list Config.ItemWidget.Entries]]]]
+                Value = nvcr.io/nvidia/tensorrt:18.08-py3
+                Label = tensorrt:18.08-py3
+                
+                [[[[list Config.ItemWidget.Entries]]]]
+                Value = nvcr.io/nvidia/theano:18.08
+                Label = theano:18.08
+                
+                [[[[list Config.ItemWidget.Entries]]]]
+                Value = nvcr.io/nvidia/torch:18.08-py2
+                Label = torch:18.08-py2
+                
+
+
+    [[parameters Auto-Scaling]]
+    Description = "The cluster can autoscale to the workload, adding execute hosts as jobs are queued. To enable this check the box below and choose the initial and maximum core counts for the cluster"
+    Order = 60
+
+        [[[parameter Autoscale]]]
+        Label = Autoscale
+        DefaultValue = true
+        Widget.Plugin = pico.form.BooleanCheckBox
+        Widget.Label = Start and stop execute instances automatically
+
+        [[[parameter MaxExecuteCoreCount]]]
+        Label = Max Cores
+        Description = The total number of execute cores to start
+        DefaultValue = 100
+        Config.Plugin = pico.form.NumberTextBox
+        Config.MinValue = 1
+        Config.IntegerOnly = true
+
+        [[[parameter UseLowPrio]]]
+        Label = Use Low Prio Instances
+        DefaultValue = false
+        Widget.Plugin = pico.form.BooleanCheckBox
+        Widget.Label = Use low priority instances for execute hosts
+
+
+
+[parameters Advanced Settings]
+Order = 20
+
+    [[parameters Azure Settings]]
+    Order = 10 
+
+        [[[parameter Credentials]]]
+        Description = The credentials for the cloud provider
+        ParameterType = Cloud.Credentials
+
+
+        [[[parameter DefaultClusterInitSpecs]]]
+        Label = Default Cluster-Init Specs
+        Description = Cluster init specs to apply to all nodes
+        ParameterType = Cloud.ClusterInitSpecs
+
+        [[[parameter MasterClusterInitSpecs]]]
+        Label = Master Cluster-Init Specs
+        DefaultValue = =undefined
+        Description = Cluster init specs to apply to the master node
+        ParameterType = Cloud.ClusterInitSpecs
+    
+        [[[parameter ExecuteClusterInitSpecs]]]
+        Label = Execute Cluster-Init Specs
+        DefaultValue = =undefined
+        Description = Cluster init specs to apply to execute nodes
+        ParameterType = Cloud.ClusterInitSpecs
+	
+
+
+    [[parameters Software]]
+    Description = "Specify the scheduling software, and base OS installed on all nodes, and optionally the cluster-init and chef versions from your Locker."
+    Order = 10
+
+
+    [[parameters Advanced Networking]]
+    Description = Advanced networking settings
+
+        [[[parameter ReturnProxy]]]
+        Label = Return Proxy
+        DefaultValue = true
+        ParameterType = Boolean
+        Config.Label = Use SSH tunnel to connect to CycleCloud (required if direct access is blocked)
+
+        [[[parameter UsePublicNetwork]]]
+        Label = Public IP
+        DefaultValue = true
+        ParameterType = Boolean
+        Config.Label = Access master node from the Internet
+
