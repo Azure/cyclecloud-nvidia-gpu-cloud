@@ -14,18 +14,8 @@ Autoscale = $Autoscale
     Credentials = $Credentials    
     SubnetId = $SubnetId
     Region = $Region
+    ImageName = $ImageName
     KeyPairLocation = ~/.ssh/cyclecloud.pem
-
-    InstallJetpack = true
-    JetpackPlatform = ubuntu-16.04
-    AwaitInstallation = true
-
-    Azure.Publisher = nvidia
-    Azure.Offer = ngc_azure_17_11
-    Azure.ImageVersion = latest
-    Azure.Sku = nvidia_gpu_cloud_18_06
-    Azure.OS = linux
-
 
     AdditionalClusterInitSpecs = $DefaultClusterInitSpecs
 
@@ -269,6 +259,11 @@ Order = 20
     [[parameters Software]]
     Description = "Specify the scheduling software, and base OS installed on all nodes, and optionally the cluster-init and chef versions from your Locker."
     Order = 10
+
+        [[[parameter ImageName]]]
+        Label = Base OS
+        ParameterType = Cloud.Image
+        DefaultValue = nvidia:ngc_azure_17_11:nvidia_gpu_cloud_2019_05_0:19.05.0
 
 
     [[parameters Advanced Networking]]
